@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Senzai-KK02 / Pilot</title>
+<link rel="stylesheet" href="style.css?v=3">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
+</head>
+<body>
+<main id="stage" aria-label="Senzai-KK02 piloted through latent space">
+  <div class="heading">
+    <p class="eyebrow">LIVING FIELD / 02 / PILOT</p>
+    <h1>SENZAI<span>.</span><small>KK02 / 潜在空間</small></h1>
+  </div>
+  <div class="corner"><a href="../senzai-kk02/">KK02 / observatory ↗</a></div>
+  <p class="credit">JELALUDO / SENZAI-KK02</p>
+  <div id="loading" role="status">Resolving the field…</div>
+
+  <div id="hud">
+    <div id="wall" aria-hidden="true"></div>
+    <p id="wall-text" role="status" aria-hidden="true">OVERFITTING<small>RETURN TO OPEN SPACE</small></p>
+    <div id="reticle" aria-hidden="true"><i></i></div>
+    <svg id="sight-link" hidden aria-hidden="true"><path id="sight-vector"/></svg>
+    <div id="bracket" hidden>
+      <svg class="target-sight" viewBox="-44 -44 88 88" aria-hidden="true">
+        <circle id="sight-tolerance" r="18"/>
+        <path class="target-diamond" d="M0 -12 12 0 0 12 -12 0Z M0 -29V-24 M29 0H24 M0 29V24 M-29 0H-24"/>
+        <circle class="sight-track" r="34"/>
+        <circle id="sight-progress" r="34" pathLength="100"/>
+      </svg>
+      <p><b id="bracket-state"></b><u><s id="bracket-bar"></s></u></p>
+    </div>
+    <div id="aim-reticle" hidden aria-hidden="true">
+      <svg viewBox="-44 -44 88 88"><circle id="aim-ring" r="18"/><path id="aim-wings"/><path d="M-3 0H3 M0 -3V3"/></svg>
+      <small>AIM</small>
+    </div>
+    <div id="lock-guide" hidden><strong id="lock-instruction">ALIGN RING + DIAMOND</strong><span id="lock-range"></span><small>MOUSE aim · W/S range · A/D strafe · X brake</small></div>
+    <div id="edge-arrow" hidden aria-hidden="true"></div>
+    <p id="toast" role="status"></p>
+    <p id="helm">F TO SWEEP · Z TO SELECT<small>Mouse: align ring + diamond · move into range · hold 3 seconds</small></p>
+
+    <dl id="telemetry" aria-label="Flight telemetry">
+      <div><dt>STATE</dt><dd id="t-state">FORAGING</dd></div>
+      <div><dt>FLIGHT</dt><dd id="t-mode">HOVER</dd></div>
+      <div><dt>VEL</dt><dd><span id="t-vel">0.0</span> m/s <u><s id="t-bar"></s></u></dd></div>
+      <div><dt>ALT</dt><dd><span id="t-alt">0</span> m <em id="t-vsi"></em></dd></div>
+      <div><dt>HDG</dt><dd><span id="t-hdg">000</span>°</dd></div>
+      <div><dt>LOCK</dt><dd id="t-lock">—</dd></div>
+      <div><dt>CAPTURED</dt><dd id="t-read">0 / 7</dd></div>
+    </dl>
+
+    <aside id="legend" aria-label="Controls">
+      <p class="eyebrow">CONTROLS <span><kbd>H</kbd></span></p>
+      <ul>
+        <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>thrust · coast on release</span></li>
+        <li><kbd>W</kbd><kbd>S</kbd><span>approach · retreat</span></li>
+        <li>mouse<span>align ring + diamond</span></li>
+        <li><kbd>Space</kbd><span>ascend</span></li>
+        <li><kbd>Ctrl</kbd>+<kbd>Space</kbd> / <kbd>C</kbd><span>descend</span></li>
+        <li><kbd>Shift</kbd><span>surge</span></li>
+        <li><kbd>Alt</kbd><span>fine</span></li>
+        <li><kbd>X</kbd><span>brake to hover</span></li>
+        <li><kbd>Q</kbd><kbd>E</kbd> / arrows<span>aim · look</span></li>
+        <li><kbd>Z</kbd><span>select · release</span></li>
+        <li><kbd>Tab</kbd> · <kbd>1</kbd>–<kbd>7</kbd><span>next · select concept</span></li>
+        <li><kbd>F</kbd><span>sweep</span></li>
+        <li>ultra focus<span>align + stay close for 3 s</span></li>
+        <li><kbd>R</kbd><span>recentre view</span></li>
+        <li>scroll<span>camera distance</span></li>
+      </ul>
+    </aside>
+  </div>
+</main>
+<script type="module" src="main.js?v=3"></script>
+</body>
+</html>
