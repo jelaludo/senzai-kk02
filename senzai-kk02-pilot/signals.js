@@ -1,6 +1,6 @@
 // Quiet concepts drift on authored paths, then resist examination with a physical escape offset.
 import * as T from 'three';
-import { SWEEP, TUNING } from './pilot.js?v=4';
+import { SWEEP, TUNING } from './pilot.js?v=5';
 
 export const CONCEPTS = [
   { id: 'KIOKU', kanji: '記憶', gloss: 'memory', anchor: [42, 38, 18], orbit: .035, wobble: [8, 5, 8], rate: .5 },
@@ -55,7 +55,7 @@ export function createSignals() {
       for (const s of list) {
         previous.copy(s.position);
         conceptPosition(s.concept, s.index, t, base);
-        const resisting = pilot.lock === s.index && pilot.range <= TUNING.holdRange + 3 && !s.resolved;
+        const resisting = pilot.examIndex === s.index && pilot.range <= TUNING.holdRange + 3 && !s.resolved;
         if (resisting) {
           s.struggle += dt;
           away.subVectors(s.position, pilot.pos).normalize();

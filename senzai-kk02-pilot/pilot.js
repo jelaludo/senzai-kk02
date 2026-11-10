@@ -2,7 +2,7 @@
 // Senzai-KK02 pilot: input, drone-style flight with momentum, chase camera and Z-lock.
 // Writes the body pose and attention target into STEER, which the forked runtime reads.
 import * as T from 'three';
-import { STEER, attentionDirection, PRECISION_FOCUS } from './runtime-pilot.js';
+import { STEER, attentionDirection, PRECISION_FOCUS } from './runtime-pilot.js?v=5';
 
 // All feel lives here. Units: metres, seconds, radians.
 export const TUNING = {
@@ -19,13 +19,17 @@ export const TUNING = {
   cameraLift: 20,    // look point above the body centre, keeps the reticle clear of the sphere
   lockBias: [.5, 1.2], // rad the camera swings aside so the locked signal is not hidden by the body: far, close
   lockCone: .5,      // rad around the reticle in which Z prefers a signal
-  readRange: 42,     // m from body centre at which tendrils can read a locked signal
-  holdRange: 47,     // a little slack after ultra-focus starts
+  readRange: 68,     // m from body centre at which the longer tendrils can read a signal
+  holdRange: 78,     // slack for a thought's escape motion after ultra-focus starts
+  attractionRange: 44, // comfortable following distance inside tendril reach
+  attractionSpeed: 16, // maximum automatic closing speed, m/s
+  attractionAccel: 14, // soft pull; manual thrust remains stronger
+  attractionResponse: 1.6, // settle into the thought's motion rather than orbit past it
   readTime: 3,       // uninterrupted seconds after the tendrils converge
   aimSeatTime: .3,   // align both reticles before the tendrils converge
-  aimGrace: .18,     // a small aiming slip pauses the hold; longer slips break it
+  aimGrace: .35,     // a small aiming slip pauses the hold; longer slips break it
   aimResponse: 22,   // mouse pipper response, 1/s
-  aimDrift: .0018,   // flight-relative slip in screen-height units per m/s
+  aimDrift: .0012,   // flight-relative slip in screen-height units per m/s
   standoff: 27,      // m; the body is pushed back so it never swallows a signal
   centre: [0, 30, 0],
   wallStart: 105, wallPush: 120, wallHard: 164, // overfitting: noise, restoring force, absolute limit
@@ -44,7 +48,7 @@ export function createPilot({ camera, dom, signals, onEvent = () => { } }) {
   const touchFlight = { x: 0, z: 0, y: 0, brake: false };
   const pos = new T.Vector3(-8, 25, 3), vel = new T.Vector3(), follow = pos.clone(), focus = new T.Vector3(), centre = new T.Vector3(...TUNING.centre);
   const fwd = new T.Vector3(), right = new T.Vector3(), view = new T.Vector3(), acc = new T.Vector3(), thrust = new T.Vector3(), to = new T.Vector3(), look = new T.Vector3(), tmp = new T.Vector3();
-  const cameraRight = new T.Vector3(), cameraUp = new T.Vector3(), relativeVelocity = new T.Vector3();
+  const cameraRight = new T.Vector3(), cameraUp = new T.Vector3(), relativeVelocity = new T.Vector3(), attraction = new T.Vector3();
   const s = {
     pos, vel, focus, yaw: -.35, pitch: -.14, distance: TUNING.distance[1], lock: -1, hover: -1, gather: 0, mode: 'HOVER', speed: 0, wall: 0,
     range: 0, precision: 0, phase: 'FORAGING', offYaw: 0, offPitch: 0, lockBlend: 0, captured: false, pingAt: -10, pingOrigin: new T.Vector3(), clock: 0, fov: 52, roll: 0, input: false,
@@ -52,7 +56,7 @@ export function createPilot({ camera, dom, signals, onEvent = () => { } }) {
     aimInput: new T.Vector2(), aim: new T.Vector2(), aimDrift: new T.Vector2(), targetScreen: new T.Vector3(),
     viewportWidth: dom.clientWidth || 1360, viewportHeight: dom.clientHeight || 800,
     aimRadius: 18, aimError: Infinity, aligned: false, targetVisible: false, aimSeated: 0, aimLost: 0,
-    touchMode: false, paused: false,
+    touchMode: false, paused: false, attraction: 0,
   };
 
   // Short attention history: the runtime asks "what was the target `delay` seconds ago" so that
@@ -67,7 +71,7 @@ export function createPilot({ camera, dom, signals, onEvent = () => { } }) {
     const previous = s.lock;
     if (previous >= 0 && !signals.list[previous].resolved) signals.list[previous].decode = 0;
     exam = false; s.examIndex = -1; s.heldTime = 0; s.holding = false; s.captureUntil = 0;
-    s.aimSeated = s.aimLost = 0; s.aligned = false; s.aimError = Infinity;
+    s.aimSeated = s.aimLost = s.attraction = 0; s.aligned = false; s.aimError = Infinity;
     s.aimInput.set(0, 0); s.aim.set(0, 0); s.aimDrift.set(0, 0);
     s.lock = index; s.offYaw = s.offPitch = 0;
     if (index < 0) onEvent('attention_released', previous); else onEvent('focus_acquired', index);
@@ -210,6 +214,19 @@ export function createPilot({ camera, dom, signals, onEvent = () => { } }) {
       tmp.addScaledVector(to, -tmp.dot(to) / (s.range * s.range));
       acc.addScaledVector(tmp, -2 * (1 - T.MathUtils.smoothstep(s.range, 50, 90)));
     }
+    // Selected thoughts gently draw the sphere in and carry it with their motion. A
+    // damped velocity spring slows the approach before overshooting the focus volume.
+    // Retreat/brake immediately override the pull; thrust and strafe take priority.
+    const attracted = target && !target.resolved && !brake && iz >= -.05 && s.range > 1;
+    s.attraction = damp(s.attraction, attracted ? 1 : 0, 2, dt);
+    if (attracted) {
+      const closing = clamp((s.range - TUNING.attractionRange) * .65, -6, TUNING.attractionSpeed);
+      attraction.copy(target.velocity).clampLength(0, 26).addScaledVector(to, closing / s.range);
+      attraction.multiplyScalar(TUNING.attractionResponse + TUNING.drag).addScaledVector(vel, -TUNING.attractionResponse);
+      attraction.clampLength(0, TUNING.attractionAccel);
+      const manual = Math.max(Math.abs(ix), Math.abs(iy), Math.abs(iz));
+      acc.addScaledVector(attraction, s.attraction * (1 - .75 * manual));
+    }
     s.input = ix !== 0 || iz !== 0 || iy !== 0;
 
     // -- Overfitting and floor push back; signals keep the body at arm's length
@@ -253,7 +270,7 @@ export function createPilot({ camera, dom, signals, onEvent = () => { } }) {
 
     // Two independent sight elements: the concept diamond and the pilot's inertial pipper.
     // Camera framing follows the selected concept; it never moves the pilot's aim for them.
-    s.aimRadius = s.touchMode ? clamp(s.viewportHeight * .03, 20, 28) : clamp(s.viewportHeight * .023, 14, 24);
+    s.aimRadius = s.touchMode ? clamp(s.viewportHeight * .038, 24, 32) : clamp(s.viewportHeight * .03, 20, 30);
     if (target) {
       s.targetScreen.copy(target.position).project(camera);
       s.targetVisible = s.targetScreen.z >= -1 && s.targetScreen.z < 1 && Math.abs(s.targetScreen.x) < .97 && Math.abs(s.targetScreen.y) < .97;

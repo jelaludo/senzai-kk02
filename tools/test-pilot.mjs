@@ -8,9 +8,9 @@ const root = new URL('../', import.meta.url);
 const threeURL = process.argv[2] ? pathToFileURL(resolve(process.argv[2])).href : new URL('vendor/three/build/three.module.js',root).href;
 registerHooks({resolve(specifier, context, next) { if (specifier === 'three') return {url: threeURL, shortCircuit:true}; return next(specifier, context); }});
 const {PerspectiveCamera} = await import('three');
-const {createPilot, TUNING, SWEEP} = await import(new URL('senzai-kk02-pilot/pilot.js?v=4', root).href);
-const {createSignals} = await import(new URL('senzai-kk02-pilot/signals.js?v=4', root).href);
-const {fieldState, strandState, curve, STEER} = await import(new URL('senzai-kk02-pilot/runtime-pilot.js', root).href);
+const {createPilot, TUNING, SWEEP} = await import(new URL('senzai-kk02-pilot/pilot.js?v=5', root).href);
+const {createSignals} = await import(new URL('senzai-kk02-pilot/signals.js?v=5', root).href);
+const {fieldState, strandState, curve, STEER} = await import(new URL('senzai-kk02-pilot/runtime-pilot.js?v=5', root).href);
 globalThis.addEventListener=()=>{};
 globalThis.document={addEventListener(){},hidden:false};
 function world() {
@@ -68,7 +68,49 @@ for(let i=0;i<7;i++) {
 {
  const {pilot,tick,signals}=world();const sig=signals.list[0];
  pilot.state.pos.copy(sig.position).add({x:-37,y:0,z:0});pilot.lock(0);tick(6);
- assert(!sig.resolved);console.log('idle target escapes', {range:pilot.state.range,decode:sig.decode});
+ assert(!sig.resolved);assert.equal(sig.struggle,0,'selection alone does not start the escape motion');
+ console.log('selected thought draws closer but still needs aim', {range:pilot.state.range,decode:sig.decode});
+}
+for(let i=0;i<7;i++) {
+ const {pilot,tick,signals}=world();pilot.lock(i);
+ if(i%2){pilot.state.touchMode=true;pilot.resize(390,700);}
+ let elapsed=0;
+ while(!signals.list[i].resolved && elapsed<22){tick(.1,true,true);elapsed+=.1;}
+ assert(signals.list[i].resolved,`gentle pursuit plus manual aim should capture thought ${i} without constant thrust`);
+ console.log('Natural pursuit + manual aim',i+1,elapsed.toFixed(1)+'s');
+}
+{
+ const {pilot,tick,signals,events}=world(),sig=signals.list[0];
+ pilot.state.pos.copy(sig.position).add({x:-60,y:0,z:0});pilot.lock(0);tick(1,false,true);
+ assert(events.some(e=>e.type==='examination_started'),'longer tendrils can seat beyond the former 42 m range');
+ assert(pilot.state.range>55,'the lock seats before the sphere needs to close in');
+ tick(3.5,false,true);assert(sig.resolved,'long-distance focus still completes its full three-second hold');
+ console.log('Extended-reach capture passed');
+}
+{
+ const {pilot,tick,signals}=world(),sig=signals.list[0];
+ for(const other of signals.list.slice(1))other.position.set(1000,1000,1000);
+ pilot.state.pos.copy(sig.position).add({x:-85,y:0,z:0});pilot.lock(0);tick(2,false);
+ assert(pilot.state.range<82,'selection produces a gradual pull without movement input');
+ assert(pilot.state.speed<TUNING.attractionSpeed+2,'automatic approach remains gentle');
+ pilot.setTouchFlight({brake:true});tick(1.5,false);assert(pilot.state.speed<.1,'braking overrides attraction');
+ const before=pilot.state.range;pilot.setTouchFlight({brake:false,z:-1});tick(1.5,false);
+ assert(pilot.state.range>before+8,'retreat wins over attraction');
+ pilot.clearInput();pilot.release();pilot.state.vel.set(0,0,0);tick(2,false); // allow manual thrust to spool down
+ pilot.state.vel.set(0,0,0);const released=pilot.state.pos.clone();tick(1,false);
+ assert(pilot.state.pos.distanceTo(released)<.1,'release removes the pull');
+ console.log('Attraction, brake, retreat and release passed');
+}
+{
+ const {pilot,tick,signals}=world(),sig=signals.list[0];
+ for(const other of signals.list.slice(1))other.position.set(1000,1000,1000);
+ pilot.state.pos.copy(sig.position).add({x:-95,y:0,z:0});pilot.lock(0);pilot.setTouchFlight({brake:true});tick(2,false);
+ const state=fieldState(pilot.state.clock);state.states=Array.from({length:48},(_,id)=>strandState(id,state));
+ const tips=state.states.map((s,id)=>({commit:s.commit,length:Math.hypot(...curve(id,1,state))})).filter(s=>s.commit>.9);
+ assert(tips.length>=4);assert(tips.every(t=>t.length>35),'front tendrils visibly reach out before ultra focus');
+ sig.resolved=true;pilot.clearInput();pilot.state.vel.set(0,0,0);const captured=pilot.state.pos.clone();tick(1,false);
+ assert(pilot.state.pos.distanceTo(captured)<.01,'captured thoughts no longer pull the sphere');
+ console.log('Long scouting tendrils and capture release passed');
 }
 {
  const {pilot,tick,events,signals}=world();pilot.ping();tick(3);

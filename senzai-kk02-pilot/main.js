@@ -8,13 +8,13 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-import { createRig } from './runtime-pilot.js';
+import { createRig } from './runtime-pilot.js?v=5';
 import { createFibers, createFog } from '../senzai-kk02/effects.js?v=5';
 import { createSpace } from '../senzai-kk02/space.js';
-import { createAttention } from './attention.js';
-import { createSignals } from './signals.js?v=4';
-import { createPilot, TUNING, SWEEP } from './pilot.js?v=4';
-import { createHud } from './hud.js?v=4';
+import { createAttention } from './attention.js?v=5';
+import { createSignals } from './signals.js?v=5';
+import { createPilot, TUNING, SWEEP } from './pilot.js?v=5';
+import { createHud } from './hud.js?v=5';
 import { createMobile, touchLayout } from './mobile.js';
 import { registerPwa } from './pwa.js';
 

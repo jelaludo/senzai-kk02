@@ -1,6 +1,6 @@
 // DOM heads-up display: ephemeral sweep labels, capture progress and overfitting warning.
 import * as T from 'three';
-import { TUNING, SWEEP } from './pilot.js?v=4';
+import { TUNING, SWEEP } from './pilot.js?v=5';
 
 const $ = id => document.getElementById(id);
 const pad = (n, w = 2) => String(n).padStart(w, '0');
@@ -52,7 +52,7 @@ export function createHud({ stage, camera, signals, pilot }) {
         $('aim-ring').setAttribute('r', r);
         $('aim-wings').setAttribute('d', `M${-r-13} 0H${-r-4} M${r+4} 0H${r+13} M0 ${-r-9}V${-r-4} M0 ${r+4}V${r+9}`);
         $('sight-tolerance').setAttribute('r', r);
-        $('lock-instruction').textContent = target.resolved ? `CAPTURED · ${s.touchMode ? 'TAP NEXT' : 'TAB FOR NEXT'}` : !s.targetVisible ? 'BRING THE DIAMOND INTO VIEW' : !inRange ? (s.touchMode ? 'PUSH STICK FORWARD · CLOSE IN' : 'CLOSE IN · KEEP THE RING ON THE DIAMOND') : s.examIndex >= 0 ? (s.aligned ? 'HOLD ALIGNMENT' : 'REALIGN · LOCK SLIPPING') : aligned ? 'STEADY · SEATING LOCK' : 'ALIGN RING + DIAMOND';
+        $('lock-instruction').textContent = target.resolved ? `CAPTURED · ${s.touchMode ? 'TAP NEXT' : 'TAB FOR NEXT'}` : !s.targetVisible ? 'BRING THE DIAMOND INTO VIEW' : !inRange ? 'DRIFTING CLOSER · ALIGN RING + DIAMOND' : s.examIndex >= 0 ? (s.aligned ? 'HOLD ALIGNMENT' : 'REALIGN · LOCK SLIPPING') : aligned ? 'STEADY · SEATING LOCK' : 'ALIGN RING + DIAMOND';
         guide.querySelector('small').textContent = s.touchMode ? 'Drag to aim · stick to fly' : 'MOUSE aim · W/S range · A/D strafe · X brake';
         $('lock-range').textContent = target.resolved ? '' : `${Math.round(s.range)} m / ${s.examIndex >= 0 ? TUNING.holdRange : TUNING.readRange} m reach`;
         guide.classList.toggle('in-range', inRange);

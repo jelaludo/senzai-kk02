@@ -1,7 +1,7 @@
 // createAttention from senzai-kk02/effects.js, re-bound to the pilot fork's curve() so the
 // emerald strands follow the steered attention target. Rendering is unchanged.
 import * as T from 'three';
-import { curve } from './runtime-pilot.js';
+import { curve } from './runtime-pilot.js?v=5';
 
 export function createAttention() {
   const group = new T.Group(); group.name = 'FX_LIVING_EMERALD';

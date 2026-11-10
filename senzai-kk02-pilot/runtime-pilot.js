@@ -1,7 +1,7 @@
 // Senzai-KK02 PILOT FORK of assets/senzai-kk02/runtime.js (revision 3). The shipped runtime stays byte-identical.
 // Only difference: when STEER.active, the body centre/velocity, the attention target and the fifteen-tip
 // examination (target, axis, member strands) come from the player (pilot.js) instead of the authored
-// 72 s loop. Lines marked PILOT; everything else is verbatim.
+// 72 s loop. PILOT changes also lengthen the scouting strands and their reach toward a selection.
 export const STEER={active:false,center:[-8,25,3],velocity:[0,0,0],swift:0,sample:null,target:[0,0,0],axis:[0,0,1],ranks:new Map()};
 export const SPEC={radius_m:16,center_y_m:25,cycle_s:72,attention_strands:48,plot_m:[100,100]};
 export const TIERS=[{lod:0,fibers:5000,segments:6,sides:3,attention_segments:40,attention_sides:5,visual_fibers:36000},{lod:1,fibers:650,segments:4,sides:3,attention_segments:20,attention_sides:3,visual_fibers:18000},{lod:2,fibers:108,segments:3,sides:3,attention_segments:2,attention_sides:3,visual_fibers:0}];
@@ -77,8 +77,12 @@ export function curve(i,u,state,active=true,count=48){
  // rooted first tangent while its far tangent points toward a shared sensed target.
  const delayed=attentionAt(state.time,.025+hash(i+91)*.16+(1-u)*.22);
  const aim=norm(sub(delayed.focus,state.center)),tangent=sub(aim,mul(d,dot(d,aim)));
- const reach=15.9+ss.extension;
+ const reach=15.9+ss.extension*(STEER.active?1.8:1); // PILOT: longer, exploratory tendrils
  let tip=add(mul(d,reach),add(mul(tangent,ss.commit*6.8),mul(sideWind,1.5*(1-ss.commit*.65))));
+ if(STEER.active&&ss.commit>0){ // PILOT: fan toward the thought before the precision ring seats
+  const distance=Math.max(16,Math.min(58,Math.hypot(...sub(delayed.focus,state.center))-4));
+  tip=mix(tip,mul(aim,distance),ss.commit*.68);
+ }
  const localAim=norm(add(mul(d,.85),add(mul(a,Math.sin(w*(4+i%3)+seed*9)*.75),mul(b,Math.cos(w*5+seed*13)*.55))));
  let tipAim=norm(mix(localAim,norm(sub(sub(delayed.focus,state.center),tip)),ss.commit*.92));
  if(ss.precision>0){

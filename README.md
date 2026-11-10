@@ -27,7 +27,7 @@ The Pilot lives at `senzai-kk02-pilot/`. The companion Observatory, at `senzai-k
 | Mouse wheel | Camera distance |
 | H | Toggle the controls legend |
 
-Move within reach and align the ring and diamond. Both turn green when aligned and in range. Fifteen tendrils converge; hold alignment for three seconds to capture the concept. Brief aim slips pause progress; longer slips or leaving reach reset the capture. The overfitting boundary adds orange-to-red interference and pushes you inward.
+Selected thoughts gently draw the sphere closer and carry it with their movement, settling around 44 metres away. Thrust speeds up the approach; retreat or brake overrides the pull. The pull ends on release or capture. Tendrils reach 68 metres, with 78 metres of slack once focus starts. Align the ring and diamond. Both turn green when aligned and in range. Fifteen tendrils converge; hold alignment for three seconds to capture the concept. Brief aim slips (up to 0.35 seconds) pause progress; longer slips or leaving reach reset the capture. Thoughts begin resisting once examination starts. The overfitting boundary adds orange-to-red interference and pushes you inward.
 
 ## Mobile and installation
 
@@ -70,7 +70,7 @@ node tools/test-pwa.mjs
 node tools/build-sw.mjs --check
 ```
 
-The checks cover inertia, braking, sweep expiry, boundary recovery, all seven captures, the fifteen-tip focus pose, aim slips, reacquisition, narrow viewports, analog touch pursuit, simultaneous pointers, cancellation and pause. Holding forward without aiming must not capture a concept. PWA checks exercise installation, offline requests, scoped cache cleanup and explicit update activation. The gameplay test uses the bundled Three.js; an alternate module path can be supplied as its first argument.
+The checks cover inertia, braking, sweep expiry, boundary recovery, all seven captures, the fifteen-tip focus pose, aim slips, reacquisition, narrow viewports, natural pursuit without held thrust, long-range captures, brake/retreat overrides, analog touch pursuit, simultaneous pointers, cancellation and pause. Holding forward without aiming must not capture a concept. PWA checks exercise installation, offline requests, scoped cache cleanup and explicit update activation. The gameplay test uses the bundled Three.js; an alternate module path can be supplied as its first argument.
 
 ## Assets and attribution
 
