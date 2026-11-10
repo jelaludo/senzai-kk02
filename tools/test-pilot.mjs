@@ -1,16 +1,15 @@
 import { registerHooks } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
-import { createRequire } from 'node:module';
 import assert from 'node:assert/strict';
-// Run with Node 22.15+: node tools/test-pilot.mjs /path/to/three/build/three.module.js
-// If three is installed locally, the argument can be omitted. The game itself needs no build.
+// Run with Node 22.15+: node tools/test-pilot.mjs
+// Optional argument overrides the bundled Three.js module for compatibility checks.
 const root = new URL('../', import.meta.url);
-const threeURL = pathToFileURL(process.argv[2] ? resolve(process.argv[2]) : createRequire(import.meta.url).resolve('three')).href;
+const threeURL = process.argv[2] ? pathToFileURL(resolve(process.argv[2])).href : new URL('vendor/three/build/three.module.js',root).href;
 registerHooks({resolve(specifier, context, next) { if (specifier === 'three') return {url: threeURL, shortCircuit:true}; return next(specifier, context); }});
 const {PerspectiveCamera} = await import('three');
-const {createPilot, TUNING, SWEEP} = await import(new URL('senzai-kk02-pilot/pilot.js?v=3', root).href);
-const {createSignals} = await import(new URL('senzai-kk02-pilot/signals.js?v=3', root).href);
+const {createPilot, TUNING, SWEEP} = await import(new URL('senzai-kk02-pilot/pilot.js?v=4', root).href);
+const {createSignals} = await import(new URL('senzai-kk02-pilot/signals.js?v=4', root).href);
 const {fieldState, strandState, curve, STEER} = await import(new URL('senzai-kk02-pilot/runtime-pilot.js', root).href);
 globalThis.addEventListener=()=>{};
 globalThis.document={addEventListener(){},hidden:false};
@@ -102,5 +101,13 @@ for(let i=0;i<7;i++) {
  pilot.lock(0);pilot.keys.add('KeyW');tick(12,true,true);
  assert(signals.list[0].resolved,'narrow view must keep the target reachable by the reticle');
  console.log('narrow viewport reticle + capture passed');
+}
+{
+ const {pilot,tick,signals,camera}=world();pilot.state.touchMode=true;pilot.resize(390,700);camera.aspect=390/700;camera.updateProjectionMatrix();
+ pilot.lock(0);pilot.setTouchFlight({z:1});tick(14,true,true);assert(signals.list[0].resolved);
+ pilot.setTouchFlight({z:0,brake:true});tick(1);assert(pilot.state.speed<1);
+ pilot.setTouchFlight({y:1,brake:false});tick(.6);assert(pilot.state.vel.y>0);
+ pilot.clearInput();const position=pilot.state.pos.clone();pilot.state.paused=true;tick(1,false);
+ assert.equal(pilot.state.pos.distanceTo(position),0);console.log('mobile analog pursuit, braking, lift and pause passed');
 }
 console.log('ALL PASSED');

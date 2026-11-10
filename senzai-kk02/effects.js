@@ -16,9 +16,9 @@ vec3 living(vec3 d,float u){
  return d*(3.2+12.8*u+breathing*bend+gather*.65*uu)+a*ca+b*cb+wind*1.35*bend+tangent*gather*1.6*uu-uVelocity*.05225*uu;
 }
 void main(){vec3 p=living(strandDirection,along);vec4 world=modelMatrix*vec4(p,1.);vec3 normal=normalize(mat3(modelMatrix)*strandDirection),toEye=normalize(cameraPosition-world.xyz);float rim=pow(clamp(1.-abs(dot(normal,toEye)),0.,1.),1.65);float key=.12+.88*max(dot(normal,normalize(vec3(.5,.8,-.3))),0.);vLight=(.045+.955*rim)*key*(.15+.85*pow(seed,2.));vAlong=along;gl_Position=projectionMatrix*viewMatrix*world;gl_PointSize=.8+pow(seed,4.)*1.5;}`;
-export function createFibers(lod){
- const count=TIERS[lod].visual_fibers,group=new T.Group();group.name='FX_LIVING_GLASS';const uniforms={uTime:{value:0},uVelocity:{value:new T.Vector3()},uBreeze:{value:new T.Vector3()},uFacing:{value:new T.Vector3()},uGather:{value:0}};if(!count)return {group,update(){}};
- const segments=lod===0?16:12,directions=[],seeds=[],along=[],zero=[],tipD=[],tipS=[];
+export function createFibers(lod,{density=1,detailSegments}={}){
+ const count=Math.round(TIERS[lod].visual_fibers*density),group=new T.Group();group.name='FX_LIVING_GLASS';const uniforms={uTime:{value:0},uVelocity:{value:new T.Vector3()},uBreeze:{value:new T.Vector3()},uFacing:{value:new T.Vector3()},uGather:{value:0}};if(!count)return {group,update(){}};
+ const segments=detailSegments||(lod===0?16:12),directions=[],seeds=[],along=[],zero=[],tipD=[],tipS=[];
  for(let i=0;i<count;i++){const d=direction(i,count),seed=hash(i+7);for(let j=0;j<segments;j++)for(const k of [0,1]){directions.push(...d);seeds.push(seed);along.push((j+k)/segments);zero.push(0,0,0);}tipD.push(...d);tipS.push(seed);}
  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(zero,3));g.setAttribute('strandDirection',new T.Float32BufferAttribute(directions,3));g.setAttribute('seed',new T.Float32BufferAttribute(seeds,1));g.setAttribute('along',new T.Float32BufferAttribute(along,1));
  const material=new T.ShaderMaterial({uniforms,transparent:true,depthWrite:false,vertexShader:livingVertex,fragmentShader:`varying float vLight;varying float vAlong;void main(){float tip=pow(clamp(vAlong,0.,1.),2.2);gl_FragColor=vec4(vec3(.17,.27,.24)*vLight*(.12+.88*tip),.62);}`});const lines=new T.LineSegments(g,material);lines.frustumCulled=false;group.add(lines);

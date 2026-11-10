@@ -41,6 +41,7 @@ export const SWEEP = { speed: 110, startRadius: 16, duration: 2.4, revealTime: 1
 
 export function createPilot({ camera, dom, signals, onEvent = () => { } }) {
   const keys = new Set(), down = (...codes) => codes.some(c => keys.has(c));
+  const touchFlight = { x: 0, z: 0, y: 0, brake: false };
   const pos = new T.Vector3(-8, 25, 3), vel = new T.Vector3(), follow = pos.clone(), focus = new T.Vector3(), centre = new T.Vector3(...TUNING.centre);
   const fwd = new T.Vector3(), right = new T.Vector3(), view = new T.Vector3(), acc = new T.Vector3(), thrust = new T.Vector3(), to = new T.Vector3(), look = new T.Vector3(), tmp = new T.Vector3();
   const cameraRight = new T.Vector3(), cameraUp = new T.Vector3(), relativeVelocity = new T.Vector3();
@@ -51,6 +52,7 @@ export function createPilot({ camera, dom, signals, onEvent = () => { } }) {
     aimInput: new T.Vector2(), aim: new T.Vector2(), aimDrift: new T.Vector2(), targetScreen: new T.Vector3(),
     viewportWidth: dom.clientWidth || 1360, viewportHeight: dom.clientHeight || 800,
     aimRadius: 18, aimError: Infinity, aligned: false, targetVisible: false, aimSeated: 0, aimLost: 0,
+    touchMode: false, paused: false,
   };
 
   // Short attention history: the runtime asks "what was the target `delay` seconds ago" so that
@@ -93,6 +95,16 @@ export function createPilot({ camera, dom, signals, onEvent = () => { } }) {
     lock(index) { if (signals.list[index]) setLock(index); },
     // Coordinates are normalized screen space. Mouse and keyboard use the same aim path.
     aimAt(x, y) { s.aimInput.set(clamp(x, -.96, .96), clamp(y, -.94, .94)); },
+    setTouchFlight(input) {
+      for (const axis of ['x', 'y', 'z']) if (Number.isFinite(input[axis])) touchFlight[axis] = clamp(input[axis], -1, 1);
+      if ('brake' in input) touchFlight.brake = !!input.brake;
+    },
+    clearInput() { keys.clear(); Object.assign(touchFlight, { x: 0, z: 0, y: 0, brake: false }); },
+    touchLook(dx, dy) {
+      if (s.lock >= 0) actions.aimAt(s.aimInput.x + dx * 2 / s.viewportWidth, s.aimInput.y - dy * 2 / s.viewportHeight);
+      else { s.yaw += dx * .005; s.pitch = clamp(s.pitch - dy * .005, -1.15, .9); }
+    },
+    zoom(factor) { s.distance = clamp(s.distance * factor, TUNING.distance[0], TUNING.distance[2]); },
     resize(w, h) { s.viewportWidth = Math.max(1, w); s.viewportHeight = Math.max(1, h); },
     ping() { if (s.clock - s.pingAt < SWEEP.duration) return; s.pingAt = s.clock; s.pingOrigin.copy(pos); onEvent('ping'); },
     recentre() { s.aimInput.set(0, 0); s.offYaw = s.offPitch = 0; s.pitch = -.14; s.distance = TUNING.distance[1]; if (s.lock < 0 && vel.lengthSq() > 9) s.yaw = Math.atan2(vel.x, -vel.z); },
@@ -122,13 +134,14 @@ export function createPilot({ camera, dom, signals, onEvent = () => { } }) {
     onEvent('input');
   });
   addEventListener('keyup', e => { keys.delete(e.code); if (e.code === 'Space') e.preventDefault(); });
-  addEventListener('blur', () => keys.clear());
-  document.addEventListener('visibilitychange', () => { if (document.hidden) keys.clear(); });
+  addEventListener('blur', actions.clearInput);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) actions.clearInput(); });
 
   // ---- mouse ---------------------------------------------------------------------------
   let dragging = false, dragged = 0;
   const captured = () => document.pointerLockElement === dom;
   dom.addEventListener('mousedown', e => {
+    if (s.touchMode) return;
     if (e.button === 2) { actions.release(); return; }
     if (e.button !== 0) return;
     if (s.lock >= 0) return; // selected: the mouse aims; clicking must not discard the target
@@ -140,6 +153,7 @@ export function createPilot({ camera, dom, signals, onEvent = () => { } }) {
     if (dragged < 4) { try { dom.requestPointerLock()?.catch?.(() => { }); } catch { /* unavailable: drag-look still works */ } }
   });
   addEventListener('mousemove', e => {
+    if (s.touchMode) return;
     if (s.lock >= 0) {
       if (captured()) actions.aimAt(s.aimInput.x + e.movementX * 2 / s.viewportWidth, s.aimInput.y - e.movementY * 2 / s.viewportHeight);
       else {
@@ -155,6 +169,7 @@ export function createPilot({ camera, dom, signals, onEvent = () => { } }) {
   document.addEventListener('pointerlockchange', () => { s.captured = captured(); onEvent('capture', s.captured); });
 
   function step(dt) {
+    if (s.paused) return;
     s.clock += dt; fps = damp(fps, 1 / Math.max(dt, 1e-3), 2, dt);
     turn(((down('KeyE', 'ArrowRight') ? 1 : 0) - (down('KeyQ', 'ArrowLeft') ? 1 : 0)) * TUNING.keyLook * dt,
       ((down('ArrowUp') ? 1 : 0) - (down('ArrowDown') ? 1 : 0)) * TUNING.keyLook * .6 * dt);
@@ -174,10 +189,10 @@ export function createPilot({ camera, dom, signals, onEvent = () => { } }) {
 
     // -- thrust in the horizontal frame of the view (or of the lock), lift on the world axis
     fwd.set(Math.sin(basisYaw), 0, -Math.cos(basisYaw)); right.set(Math.cos(basisYaw), 0, Math.sin(basisYaw));
-    const ix = (down('KeyD') ? 1 : 0) - (down('KeyA') ? 1 : 0), iz = (down('KeyW') ? 1 : 0) - (down('KeyS') ? 1 : 0);
+    const ix = clamp((down('KeyD') ? 1 : 0) - (down('KeyA') ? 1 : 0) + touchFlight.x, -1, 1), iz = clamp((down('KeyW') ? 1 : 0) - (down('KeyS') ? 1 : 0) + touchFlight.z, -1, 1);
     const ctrl = down('ControlLeft', 'ControlRight');
-    const iy = clamp((down('Space') ? (ctrl ? -1 : 1) : 0) - (down('KeyC') ? 1 : 0), -1, 1);
-    const boost = down('ShiftLeft', 'ShiftRight'), fine = down('AltLeft', 'AltRight'), brake = down('KeyX');
+    const iy = clamp((down('Space') ? (ctrl ? -1 : 1) : 0) - (down('KeyC') ? 1 : 0) + touchFlight.y, -1, 1);
+    const boost = down('ShiftLeft', 'ShiftRight'), fine = down('AltLeft', 'AltRight'), brake = down('KeyX') || touchFlight.brake;
     const gain = fine ? TUNING.fine : boost ? TUNING.boost : 1;
     acc.set(0, 0, 0).addScaledVector(right, ix);
     // W follows the full 3D line to the Z-lock; A/D remain tangential, including on diagonals.
@@ -238,7 +253,7 @@ export function createPilot({ camera, dom, signals, onEvent = () => { } }) {
 
     // Two independent sight elements: the concept diamond and the pilot's inertial pipper.
     // Camera framing follows the selected concept; it never moves the pilot's aim for them.
-    s.aimRadius = clamp(s.viewportHeight * .023, 14, 24);
+    s.aimRadius = s.touchMode ? clamp(s.viewportHeight * .03, 20, 28) : clamp(s.viewportHeight * .023, 14, 24);
     if (target) {
       s.targetScreen.copy(target.position).project(camera);
       s.targetVisible = s.targetScreen.z >= -1 && s.targetScreen.z < 1 && Math.abs(s.targetScreen.x) < .97 && Math.abs(s.targetScreen.y) < .97;

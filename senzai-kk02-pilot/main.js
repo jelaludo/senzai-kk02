@@ -9,17 +9,20 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { createRig } from './runtime-pilot.js';
-import { createFibers, createFog } from '../senzai-kk02/effects.js?v=4';
+import { createFibers, createFog } from '../senzai-kk02/effects.js?v=5';
 import { createSpace } from '../senzai-kk02/space.js';
 import { createAttention } from './attention.js';
-import { createSignals } from './signals.js?v=3';
-import { createPilot, TUNING, SWEEP } from './pilot.js?v=3';
-import { createHud } from './hud.js?v=3';
+import { createSignals } from './signals.js?v=4';
+import { createPilot, TUNING, SWEEP } from './pilot.js?v=4';
+import { createHud } from './hud.js?v=4';
+import { createMobile, touchLayout } from './mobile.js';
+import { registerPwa } from './pwa.js';
 
 const ASSETS = '../assets/senzai-kk02/', LOD = 1;
 const stage = document.getElementById('stage'), loading = document.getElementById('loading');
-const renderer = new T.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+const mobileRendering = touchLayout();
+const renderer = new T.WebGLRenderer({ antialias: !mobileRendering, powerPreference: mobileRendering ? 'low-power' : 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, mobileRendering ? 1.25 : 1.5));
 renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.12;
 stage.prepend(renderer.domElement);
 const scene = new T.Scene(); scene.background = new T.Color('#020706');
@@ -79,14 +82,19 @@ pilot = createPilot({ camera, dom: renderer.domElement, signals, onEvent(type, d
   if (LORE_EVENTS.has(type)) dispatchEvent(new CustomEvent('senzai:' + type, { detail: { index: data, concept: signals.list[data]?.concept } }));
 } });
 hud = createHud({ stage, camera, signals, pilot });
+const mobile = createMobile({ stage, canvas: renderer.domElement, pilot, signals });
+registerPwa();
 
 let rig, fibers, attention, last = performance.now();
 function frame() {
-  const now = performance.now(), dt = Math.min((now - last) / 1000, .1); last = now;
+  const now = performance.now();
+  if (document.hidden) { last = now; return; }
+  if (mobileRendering && now - last < 1000 / 30) return;
+  const dt = Math.min((now - last) / 1000, .1); last = now;
   const s = pilot.state;
   // Small physics steps keep inertia, contact and the three-second hold stable at lower FPS.
   const steps = Math.max(1, Math.ceil(dt * 60)), step = dt / steps;
-  for (let i = 0; i < steps; i++) { signals.move(s.clock + step, step, s); pilot.step(step); }
+  if (!s.paused) for (let i = 0; i < steps; i++) { signals.move(s.clock + step, step, s); pilot.step(step); }
   signals.update(s.clock, dt, camera, s);
   const state = rig.pose(s.clock, { awake: 1, hdr: true });
   fibers.update(state); attention.update(state);
@@ -102,7 +110,7 @@ function frame() {
   tether.material.opacity = T.MathUtils.damp(tether.material.opacity, s.lock >= 0 ? .12 * (1 - s.precision) : 0, 6, dt);
   if (s.lock >= 0) { line.setXYZ(0, ...state.center); line.setXYZ(1, ...signals.list[s.lock].position.toArray()); line.needsUpdate = true; }
 
-  hud.update();
+  hud.update(); mobile.update();
   composer.render();
 }
 
@@ -111,10 +119,11 @@ try {
   const entry = manifest.assets.find(a => a.lod === LOD), gltf = await new GLTFLoader().loadAsync(ASSETS + entry.file);
   scene.add(gltf.scene);
   rig = createRig(gltf.scene);
-  fibers = createFibers(LOD); rig.frame.add(fibers.group);
+  fibers = createFibers(LOD, mobileRendering ? { density: .4, detailSegments: 8 } : {}); rig.frame.add(fibers.group);
   attention = createAttention(); rig.frame.add(attention.group);
   gltf.scene.traverse(n => { if (n.isMesh) n.frustumCulled = false; });
   loading.hidden = true;
+  mobile.ready();
   window.senzaiPilot = { pilot, signals, camera, scene, renderer, rig, TUNING, frame };
   renderer.setAnimationLoop(frame);
 } catch (e) { loading.textContent = e.message; console.error(e); }

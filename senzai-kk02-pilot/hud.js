@@ -1,6 +1,6 @@
 // DOM heads-up display: ephemeral sweep labels, capture progress and overfitting warning.
 import * as T from 'three';
-import { TUNING, SWEEP } from './pilot.js?v=3';
+import { TUNING, SWEEP } from './pilot.js?v=4';
 
 const $ = id => document.getElementById(id);
 const pad = (n, w = 2) => String(n).padStart(w, '0');
@@ -30,7 +30,7 @@ export function createHud({ stage, camera, signals, pilot }) {
       else if (type === 'examination_broken') say('LOCK BROKEN · REALIGN', 'dim');
       else if (type === 'examination_completed') {
         const all = signals.list.every(sig => sig.resolved);
-        say(all ? 'ALL 7 CONCEPTS CAPTURED' : `CAPTURED · ${signals.list[data].concept.gloss.toUpperCase()} · TAB FOR NEXT`, 'bright');
+        say(all ? 'ALL 7 CONCEPTS CAPTURED' : `CAPTURED · ${signals.list[data].concept.gloss.toUpperCase()} · ${pilot.state.touchMode ? 'TAP NEXT' : 'TAB FOR NEXT'}`, 'bright');
       }
       else if (type === 'ping') say('SWEEP', 'dim');
       else if (type === 'legend') $('legend').classList.toggle('collapsed');
@@ -52,7 +52,8 @@ export function createHud({ stage, camera, signals, pilot }) {
         $('aim-ring').setAttribute('r', r);
         $('aim-wings').setAttribute('d', `M${-r-13} 0H${-r-4} M${r+4} 0H${r+13} M0 ${-r-9}V${-r-4} M0 ${r+4}V${r+9}`);
         $('sight-tolerance').setAttribute('r', r);
-        $('lock-instruction').textContent = target.resolved ? 'CONCEPT CAPTURED · TAB FOR NEXT' : !s.targetVisible ? 'BRING THE DIAMOND INTO VIEW' : !inRange ? 'CLOSE IN · KEEP THE RING ON THE DIAMOND' : s.examIndex >= 0 ? (s.aligned ? 'HOLD ALIGNMENT · CONCEPT RESISTING' : 'REALIGN · LOCK SLIPPING') : aligned ? 'STEADY · SEATING LOCK' : 'ALIGN RING + DIAMOND';
+        $('lock-instruction').textContent = target.resolved ? `CAPTURED · ${s.touchMode ? 'TAP NEXT' : 'TAB FOR NEXT'}` : !s.targetVisible ? 'BRING THE DIAMOND INTO VIEW' : !inRange ? (s.touchMode ? 'PUSH STICK FORWARD · CLOSE IN' : 'CLOSE IN · KEEP THE RING ON THE DIAMOND') : s.examIndex >= 0 ? (s.aligned ? 'HOLD ALIGNMENT' : 'REALIGN · LOCK SLIPPING') : aligned ? 'STEADY · SEATING LOCK' : 'ALIGN RING + DIAMOND';
+        guide.querySelector('small').textContent = s.touchMode ? 'Drag to aim · stick to fly' : 'MOUSE aim · W/S range · A/D strafe · X brake';
         $('lock-range').textContent = target.resolved ? '' : `${Math.round(s.range)} m / ${s.examIndex >= 0 ? TUNING.holdRange : TUNING.readRange} m reach`;
         guide.classList.toggle('in-range', inRange);
       }
@@ -67,7 +68,7 @@ export function createHud({ stage, camera, signals, pilot }) {
         if (isLocked) locked = { sig, on, x, y, behind: v.z >= 1 };
         el.hidden = !on || !(isLocked || revealed);
         el.style.opacity = isLocked ? '1' : String(T.MathUtils.clamp((SWEEP.revealTime - age) / .65, 0, 1));
-        if (on) el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+        if (on) el.style.transform = `translate(${(s.touchMode ? T.MathUtils.clamp(x, 14, w - 150) : x).toFixed(1)}px,${y.toFixed(1)}px)`;
         el.classList.toggle('locked', isLocked);
         el.classList.toggle('hover', sig.index === s.hover);
         el.classList.toggle('resolved', sig.resolved);

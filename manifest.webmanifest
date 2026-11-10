@@ -1,0 +1,20 @@
+{
+  "id": "./",
+  "name": "Senzai · Living Field",
+  "short_name": "Senzai",
+  "description": "Pilot a living field through latent space. Discover, align and capture concepts.",
+  "start_url": "./senzai-kk02-pilot/?source=pwa",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#020706",
+  "theme_color": "#020706",
+  "lang": "en",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

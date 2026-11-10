@@ -1,6 +1,6 @@
 // Quiet concepts drift on authored paths, then resist examination with a physical escape offset.
 import * as T from 'three';
-import { SWEEP, TUNING } from './pilot.js?v=3';
+import { SWEEP, TUNING } from './pilot.js?v=4';
 
 export const CONCEPTS = [
   { id: 'KIOKU', kanji: '記憶', gloss: 'memory', anchor: [42, 38, 18], orbit: .035, wobble: [8, 5, 8], rate: .5 },
